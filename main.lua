@@ -5,8 +5,8 @@ function main()
     quikQuotesProvider = QuikQuotesProvider:new({
         instruments = {
             {
-                classCode = 'SPBFUT',
-                secCode = 'SRZ0',
+                classCode = 'TQBR',
+                secCode = 'SBER111',
                 interval = INTERVAL_H1,
             }
         }
