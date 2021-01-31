@@ -1,5 +1,8 @@
 local inspect = require('lib/inspect')
 
+local QuotesClient = require('src/quotes-client')
+local JsonRpcFileProxyClient = require('src/json_rpc_file_proxy_client')
+
 local QuikQuotesProvider = {}
 function QuikQuotesProvider:new(params)
     local this = {}
@@ -7,11 +10,21 @@ function QuikQuotesProvider:new(params)
     -- Список инструментов, по которым сохранять котировки
     this.instruments = params.instruments
 
+    -- RPC клиент
+    this.rpcClient = nil
+    this.rpcClientRequestFilePath = params.rpcClient.requestFilePath
+    this.rpcClientResponseFilePath = params.rpcClient.responseFilePath
+
+    this.quotesClient = nil
+
     -- Типы отображаемой иконки в сообщении терминала QUIK
     -- @see http://www.luaq.ru/message.html
     local QUIK_MESSAGE_INFO = 1
     local QUIK_MESSAGE_WARNING = 2
     local QUIK_MESSAGE_ERROR = 3
+
+    -- Рынок
+    local MOSCOW_EXCHANGE_MARKET = 1
 
     local function showQuikMessage(text, icon)
         if icon == nil then
@@ -50,6 +63,9 @@ function QuikQuotesProvider:new(params)
         return ds
     end
 
+    --[[
+        Инициализация
+    --]]
     local function init()
         for i, v in ipairs(this.instruments) do
             local ds, status, err
@@ -61,20 +77,32 @@ function QuikQuotesProvider:new(params)
             end
             this.instruments[i].dataSource = ds
         end
-        return true
+
+        this.rpcClient = JsonRpcFileProxyClient:new({
+            requestFilePath = this.rpcClientRequestFilePath,
+            responseFilePath = this.rpcClientResponseFilePath,
+        })
+
+        this.quotesClient = QuotesClient:new({
+            rpcClient = this.rpcClient
+        })
+    end
+
+    local function sendCandles()
+        for key, instrument in pairs(this.instruments) do
+
+            -- todo получить с сервера дату последней свечи
+            -- todo получить данные с источника
+            -- todo отправить свежие данные на сервер
+        end
     end
 
 
     function this:run()
-        local status, err = pcall(init)
-        if status == false then
-            showQuikMessage(err, QUIK_MESSAGE_ERROR)
-            do return end
-        end
+        init()
 
---        message(inspect(status))
---        message(inspect(errorMessage))
---        message(inspect(this.instruments))
+
+
 
         -- todo создаем график инструментов и отправляем периодически текущюю свечу и предыдущую (сколько раз???)
         -- todo подписываемся на таблицу с обезличенными сделками и сохраняем данные (на каждый тик или буферизируем??)
