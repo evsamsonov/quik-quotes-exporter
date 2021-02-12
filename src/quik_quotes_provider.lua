@@ -1,9 +1,12 @@
 local inspect = require('lib/inspect')
 
-local QuotesClient = require('src/quotes-client')
+local QuotesClient = require('src/quotes_client')
 local JsonRpcFileProxyClient = require('src/json_rpc_file_proxy_client')
 
-local QuikQuotesProvider = {}
+local QuikQuotesProvider = {
+    -- Рынки
+    MOSCOW_EXCHANGE_MARKET = 1
+}
 function QuikQuotesProvider:new(params)
     local this = {}
 
@@ -15,6 +18,7 @@ function QuikQuotesProvider:new(params)
     this.rpcClientRequestFilePath = params.rpcClient.requestFilePath
     this.rpcClientResponseFilePath = params.rpcClient.responseFilePath
 
+    -- Клиент к серверу хранения квот
     this.quotesClient = nil
 
     -- Типы отображаемой иконки в сообщении терминала QUIK
@@ -22,9 +26,6 @@ function QuikQuotesProvider:new(params)
     local QUIK_MESSAGE_INFO = 1
     local QUIK_MESSAGE_WARNING = 2
     local QUIK_MESSAGE_ERROR = 3
-
-    -- Рынок
-    local MOSCOW_EXCHANGE_MARKET = 1
 
     local function showQuikMessage(text, icon)
         if icon == nil then
@@ -67,17 +68,6 @@ function QuikQuotesProvider:new(params)
         Инициализация
     --]]
     local function init()
-        for i, v in ipairs(this.instruments) do
-            local ds, status, err
-            status, err = pcall(function()
-                ds = createDataSource(v.classCode, v.secCode, v.interval)
-            end)
-            if status == false then
-                error('failed to create data source ' .. v.classCode .. ', ' .. v.secCode .. ', ' .. v.interval .. ':' .. err)
-            end
-            this.instruments[i].dataSource = ds
-        end
-
         this.rpcClient = JsonRpcFileProxyClient:new({
             requestFilePath = this.rpcClientRequestFilePath,
             responseFilePath = this.rpcClientResponseFilePath,
@@ -86,14 +76,47 @@ function QuikQuotesProvider:new(params)
         this.quotesClient = QuotesClient:new({
             rpcClient = this.rpcClient
         })
+
+        for i, inst in ipairs(this.instruments) do
+            local ds, status, err
+            status, err = pcall(function()
+                ds = createDataSource(inst.classCode, inst.secCode, inst.interval)
+            end)
+            if status == false then
+                error(
+                    'failed to create data source ' .. inst.classCode .. ', ' .. inst.secCode  .. ', ' .. inst.interval
+                    .. ':' .. err
+                )
+            end
+
+            this.instruments[i].dataSource = ds
+            this.instruments[i].lastCandleTime = nil
+
+            local result = this.quotesClient:getLastCandle(inst.market, inst.secCode, inst.interval)
+            if result.candle ~= nil then
+                this.instruments[i].lastCandleTime = result.candle.time
+            end
+        end
     end
 
+    --[[
+        Отправляет свечи по всем инструментам
+    --]]
     local function sendCandles()
-        for key, instrument in pairs(this.instruments) do
-
-            -- todo получить с сервера дату последней свечи
-            -- todo получить данные с источника
-            -- todo отправить свежие данные на сервер
+        for i, inst in pairs(this.instruments) do
+            -- todo проверка периода
+            for j = inst.dataSource:Size(), 1, -1 do
+                if os.time(inst.dataSource:T(j)) >= inst.lastCandleTime then
+                    this.quotesClient:addCandle(inst.market, inst.secCode, inst.interval, {
+                        time = os.time(inst.dataSource:T(j)),
+                        high = inst.dataSource:H(j),
+                        low = inst.dataSource:L(j),
+                        open = inst.dataSource:O(j),
+                        close = inst.dataSource:C(j),
+                        volume = math.ceil(inst.dataSource:V(j)),
+                    })
+                end
+            end
         end
     end
 
@@ -101,7 +124,11 @@ function QuikQuotesProvider:new(params)
     function this:run()
         init()
 
+        sendCandles()
+        do return end
 
+
+        -- todo отписаться и закрыть источники данных
 
 
         -- todo создаем график инструментов и отправляем периодически текущюю свечу и предыдущую (сколько раз???)

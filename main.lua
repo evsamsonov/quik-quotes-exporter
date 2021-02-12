@@ -1,5 +1,7 @@
 local QuikQuotesProvider = require('src/quik_quotes_provider')
 
+local inspect = require('lib/inspect')
+
 local quikQuotesProvider
 function main()
     quikQuotesProvider = QuikQuotesProvider:new({
@@ -9,7 +11,7 @@ function main()
         },
         instruments = {
             {
-                market = MOSCOW_EXCHANGE_MARKET,
+                market = QuikQuotesProvider.MOSCOW_EXCHANGE_MARKET,
                 classCode = 'TQBR',
                 secCode = 'SBER',
                 interval = INTERVAL_H1,
