@@ -1,0 +1,15 @@
+local QuikQuotesExporter = require('src/quik_quotes_exporter')
+return {
+    rpcClient = {
+        requestFilePath = 'Z:\\dev\\rpcin',
+        responseFilePath = 'Z:\\dev\\rpcout'
+    },
+    instruments = {
+        {
+            market = QuikQuotesExporter.MOSCOW_EXCHANGE_MARKET,
+            classCode = 'TQBR',
+            secCode = 'SBER',
+            interval = INTERVAL_H1,
+        }
+    }
+}

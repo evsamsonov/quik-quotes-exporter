@@ -55,7 +55,7 @@ function JsonRpcFileProxyClient:new(params)
     this.currentId = 0
 
     -- How long to wait for response
-    this.requestTimeout = params['requestTimeout'] and params['requestTimeout'] or 5
+    this.requestTimeout = params['requestTimeout'] and params['requestTimeout'] or 30
 
     -- Prefix for ID
     this.prefix = params['prefix'] and params['prefix'] or ''
@@ -83,7 +83,7 @@ function JsonRpcFileProxyClient:new(params)
     function this:sendRequest(method, params)
         this.currentId = this.currentId + 1
 
-        local id = this.prefix .. '-' .. this.currentId
+        local id = this.prefix .. this.currentId
         local request = json:encode({
             jsonrpc = '2.0',
             method = method,

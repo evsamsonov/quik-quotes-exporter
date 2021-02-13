@@ -10,16 +10,18 @@ local QuikQuotesExporter = {
 function QuikQuotesExporter:new(params)
     local this = {}
 
---    function this:checkRequiredParams(params)
---        for i, key in ipairs(this.requiredParams) do
---            if params[key] == nil then
---                error({
---                    message = 'Required param ' .. key .. ' not set'
---                })
---            end
---        end
---    end
---    this:checkRequiredParams(params)
+    this.requiredParams = {
+        'rpcClient',
+        'instruments',
+    }
+    function this:checkRequiredParams(params)
+        for i, key in ipairs(this.requiredParams) do
+            if params[key] == nil then
+                error('Required param ' .. key .. ' not set')
+            end
+        end
+    end
+    this:checkRequiredParams(params)
 
     this.instruments = params.instruments
 
@@ -117,7 +119,6 @@ function QuikQuotesExporter:new(params)
         if inst.interval == INTERVAL_H1 and (inst.lastProcessedDate == nil or now.hour ~= inst.lastProcessedDate.hour) then
             return true
         end
-        -- todo добавить остальные периоды
         return false
     end
 

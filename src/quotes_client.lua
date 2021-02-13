@@ -1,24 +1,33 @@
-local inspect = require('lib/inspect')
-
 local QuotesClient = {}
 function QuotesClient:new(params)
     local this = {}
 
-    -- todo ошибка, если не переданы обязательные поля
+    this.requiredParams = {
+        'rpcClient'
+    }
+    function this:checkRequiredParams(params)
+        for i, key in ipairs(this.requiredParams) do
+            if params[key] == nil then
+                error('Required param ' .. key .. ' not set')
+            end
+        end
+    end
+    this:checkRequiredParams(params)
 
     -- RPC клиент :required
     this.rpcClient = params.rpcClient
 
     local intervals = {
         [INTERVAL_H1] = 6
-        -- todo прописать все интервалы
     }
 
     --[[
         Возвращает последнюю свечу по инструменту
+
         @param int market
         @param string symbol
         @param int interval
+
         @return table = {
             candle (nullable) = {
                 time        int
@@ -44,6 +53,7 @@ function QuotesClient:new(params)
 
     --[[
         Добавляет или обновляет свечу
+
         @param int market
         @param string symbol
         @param int interval
