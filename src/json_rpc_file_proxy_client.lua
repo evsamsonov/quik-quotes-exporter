@@ -8,8 +8,8 @@
 --   local rpcClient
 --   pcallStatus, pcallError = pcall(function()
 --      rpcClient = JsonRpcFileProxyClient:new({
---          requestFilePath = "request.pipe",
---          responseFilePath = "response.pipe",
+--          requestFilePath = 'request.pipe',
+--          responseFilePath = 'response.pipe',
 --          requestTimeout = 60
 --      })
 --   end)
@@ -20,9 +20,9 @@
 --
 --   local openSignal
 --   pcallStatus, pcallError = pcall(function()
---      openSignal = rpcClient:sendRequest("Method", {
---          param1 = "param1"
---          param2 = "param2"
+--      openSignal = rpcClient:sendRequest('Method', {
+--          param1 = 'param1'
+--          param2 = 'param2'
 --      })
 --   end)
 --   if false == pcallStatus then
@@ -38,27 +38,39 @@ local JsonRpcFileProxyClient = {}
 function JsonRpcFileProxyClient:new(params)
     local this = {}
 
+    this.requiredParams = {
+        'requestFilePath',
+        'responseFilePath',
+    }
+    function this:checkRequiredParams(params)
+        for i, key in ipairs(this.requiredParams) do
+            if params[key] == nil then
+                error('Required param ' .. key .. ' not set')
+            end
+        end
+    end
+    this:checkRequiredParams(params)
+
     -- Current ID for request
     this.currentId = 0
 
     -- How long to wait for response
-    this.requestTimeout = params["requestTimeout"] and params["requestTimeout"] or 300
+    this.requestTimeout = params['requestTimeout'] and params['requestTimeout'] or 5
+
+    -- Prefix for ID
+    this.prefix = params['prefix'] and params['prefix'] or ''
 
     local function openFiles(params)
-        this.requestFile = io.open(params.requestFilePath, "a")
+        this.requestFile = io.open(params.requestFilePath, 'a')
         if this.requestFile == nil then
-            error({
-                message = "JsonRpcFileProxyClient: failed open request file"
-            })
+            error('Failed open request file')
         end
 
-        this.responseFile = io.open(params.responseFilePath, "r")
+        this.responseFile = io.open(params.responseFilePath, 'r')
         if this.responseFile == nil then
-            error({
-                message = "JsonRpcFileProxyClient: failed open response file"
-            })
+            error('Failed open response file')
         end
-        this.responseFile:seek("end", 0)
+        this.responseFile:seek('end', 0)
     end
     openFiles(params)
 
@@ -70,13 +82,15 @@ function JsonRpcFileProxyClient:new(params)
     -- Sends json rpc request and returns response
     function this:sendRequest(method, params)
         this.currentId = this.currentId + 1
+
+        local id = this.prefix .. '-' .. this.currentId
         local request = json:encode({
-            jsonrpc = "2.0",
+            jsonrpc = '2.0',
             method = method,
             params = params,
-            id = this.currentId
+            id = id
         })
-        this.requestFile:write(request .. "\n")
+        this.requestFile:write(request .. '\n')
         this.requestFile:flush()
 
         local response
@@ -85,14 +99,12 @@ function JsonRpcFileProxyClient:new(params)
             sleep(100)
             for jsonLine in this.responseFile:lines() do
                 local line = json:decode(jsonLine)
-                if line.id == this.currentId then
+                if line.id == id then
                     response = line
                 end
             end
             if os.difftime(os.time(), time) > this.requestTimeout then
-                error({
-                    message = "JsonRpcFileProxyClient: request timeout"
-                })
+                error('Request timeout')
             end
         end
         do return response end

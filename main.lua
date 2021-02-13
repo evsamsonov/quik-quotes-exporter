@@ -1,30 +1,34 @@
 local QuikQuotesProvider = require('src/quik_quotes_provider')
-
-local inspect = require('lib/inspect')
+local QuikMessage = require('src/quik_message')
 
 local quikQuotesProvider
 function main()
-    quikQuotesProvider = QuikQuotesProvider:new({
-        rpcClient = {
-            requestFilePath = 'Z:\\dev\\rpcin',
-            responseFilePath = 'Z:\\dev\\rpcout'
-        },
-        instruments = {
-            {
-                market = QuikQuotesProvider.MOSCOW_EXCHANGE_MARKET,
-                classCode = 'TQBR',
-                secCode = 'SBER',
-                interval = INTERVAL_H1,
+    local status, callError = pcall(function()
+        quikQuotesProvider = QuikQuotesProvider:new({
+            rpcClient = {
+                requestFilePath = 'Z:\\dev\\rpcin',
+                responseFilePath = 'Z:\\dev\\rpcout',
+                prefix = 'quotes-exporter'
+            },
+            instruments = {
+                {
+                    market = QuikQuotesProvider.MOSCOW_EXCHANGE_MARKET,
+                    classCode = 'TQBR',
+                    secCode = 'SBER',
+                    interval = INTERVAL_H1,
+                }
             }
-        }
 
-    })
-    quikQuotesProvider:run()
+        })
+        quikQuotesProvider:run()
+    end)
+    if status == false then
+        QuikMessage.show('QuikQuotesProvider: ' .. callError, QuikMessage.QUIK_MESSAGE_ERROR)
+    end
 end
 
--- На получение статуса транзакции
---function OnTransReply(transactionReply)
---    if quikDealer then
---        quikDealer:onTransactionReply(transactionReply)
---    end
---end
+function OnStop()
+    if quikQuotesProvider then
+        quikQuotesProvider:stop()
+    end
+end

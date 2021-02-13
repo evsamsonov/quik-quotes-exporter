@@ -16,11 +16,9 @@ function QuotesClient:new(params)
 
     --[[
         Возвращает последнюю свечу по инструменту
-
         @param int market
         @param string symbol
         @param int interval
-
         @return table = {
             candle (nullable) = {
                 time        int
@@ -46,7 +44,6 @@ function QuotesClient:new(params)
 
     --[[
         Добавляет или обновляет свечу
-
         @param int market
         @param string symbol
         @param int interval

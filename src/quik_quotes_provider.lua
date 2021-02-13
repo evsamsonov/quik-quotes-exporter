@@ -1,42 +1,38 @@
 local inspect = require('lib/inspect')
 
 local QuotesClient = require('src/quotes_client')
+local QuikMessage = require('src/quik_message')
 local JsonRpcFileProxyClient = require('src/json_rpc_file_proxy_client')
 
-local QuikQuotesProvider = {
-    -- Рынки
+local QuikQuotesExporter = {
     MOSCOW_EXCHANGE_MARKET = 1
 }
-function QuikQuotesProvider:new(params)
+function QuikQuotesExporter:new(params)
     local this = {}
 
-    -- Список инструментов, по которым сохранять котировки
+--    function this:checkRequiredParams(params)
+--        for i, key in ipairs(this.requiredParams) do
+--            if params[key] == nil then
+--                error({
+--                    message = 'Required param ' .. key .. ' not set'
+--                })
+--            end
+--        end
+--    end
+--    this:checkRequiredParams(params)
+
     this.instruments = params.instruments
 
-    -- RPC клиент
     this.rpcClient = nil
     this.rpcClientRequestFilePath = params.rpcClient.requestFilePath
     this.rpcClientResponseFilePath = params.rpcClient.responseFilePath
+    this.rpcClientPrefix = params.rpcClient["prefix"] and params.rpcClient["prefix"] or ""
 
-    -- Клиент к серверу хранения квот
     this.quotesClient = nil
-
-    -- Типы отображаемой иконки в сообщении терминала QUIK
-    -- @see http://www.luaq.ru/message.html
-    local QUIK_MESSAGE_INFO = 1
-    local QUIK_MESSAGE_WARNING = 2
-    local QUIK_MESSAGE_ERROR = 3
-
-    local function showQuikMessage(text, icon)
-        if icon == nil then
-            icon = QUIK_MESSAGE_INFO
-        end
-        message(text, icon)
-    end
+    this.running = true
 
     --[[
-        Создает источник данных
-
+        Создает источник данных графика
         @see https://quikluacsharp.ru/quik-qlua/poluchenie-v-qlua-lua-dannyh-iz-grafikov-i-indikatorov/
         @see https://quikluacsharp.ru/qlua-osnovy/spisok-konstant-tajm-frejmov-grafikov/
 
@@ -71,6 +67,7 @@ function QuikQuotesProvider:new(params)
         this.rpcClient = JsonRpcFileProxyClient:new({
             requestFilePath = this.rpcClientRequestFilePath,
             responseFilePath = this.rpcClientResponseFilePath,
+            prefix = this.rpcClientPrefix,
         })
 
         this.quotesClient = QuotesClient:new({
@@ -100,39 +97,84 @@ function QuikQuotesProvider:new(params)
     end
 
     --[[
-        Отправляет свечи по всем инструментам
+        Освобождение ресурсов
     --]]
-    local function sendCandles()
-        for i, inst in pairs(this.instruments) do
-            -- todo проверка периода
-            for j = inst.dataSource:Size(), 1, -1 do
-                if os.time(inst.dataSource:T(j)) >= inst.lastCandleTime then
-                    this.quotesClient:addCandle(inst.market, inst.secCode, inst.interval, {
-                        time = os.time(inst.dataSource:T(j)),
-                        high = inst.dataSource:H(j),
-                        low = inst.dataSource:L(j),
-                        open = inst.dataSource:O(j),
-                        close = inst.dataSource:C(j),
-                        volume = math.ceil(inst.dataSource:V(j)),
-                    })
-                end
+    local function terminate()
+        for i, inst in ipairs(this.instruments) do
+            inst.dataSource:Close()
+        end
+    end
+
+    --[[
+        Проверяет необходимость обработать инструмент
+
+        @param table inst
+
+        @return bool
+    --]]
+    local function mustProcessInstrument(inst)
+        local now = os.date("*t")
+        if inst.interval == INTERVAL_H1 and (inst.lastProcessedDate == nil or now.hour ~= inst.lastProcessedDate.hour) then
+            return true
+        end
+        -- todo добавить остальные периоды
+        return false
+    end
+
+    --[[
+        Обрабатывает инструмент
+
+        @param table inst
+    --]]
+    local function processInstrument(inst)
+        for j = inst.dataSource:Size(), 1, -1 do
+            if os.time(inst.dataSource:T(j)) >= inst.lastCandleTime then
+                this.quotesClient:addCandle(inst.market, inst.secCode, inst.interval, {
+                    time = os.time(inst.dataSource:T(j)),
+                    high = inst.dataSource:H(j),
+                    low = inst.dataSource:L(j),
+                    open = inst.dataSource:O(j),
+                    close = inst.dataSource:C(j),
+                    volume = math.ceil(inst.dataSource:V(j)),
+                })
+                inst.lastCandleTime = os.time(inst.dataSource:T(j))
+                inst.lastProcessedDate = os.date("*t")
             end
         end
     end
 
+    --[[
+        Обрабатывает список инструментов
+    --]]
+    local function processInstruments()
+        for i, inst in pairs(this.instruments) do
+            if mustProcessInstrument(inst) then
+                processInstrument(inst)
+            end
+        end
+    end
 
+    --[[
+        Запуск
+    --]]
     function this:run()
         init()
+        QuikMessage.show('QuikQuotesExporter has been started successfully', QuikMessage.QUIK_MESSAGE_INFO)
 
-        sendCandles()
-        do return end
+        while this.running do
+            processInstruments()
 
+            sleep(60 * 1000)
+        end
 
-        -- todo отписаться и закрыть источники данных
+        terminate()
+    end
 
-
-        -- todo создаем график инструментов и отправляем периодически текущюю свечу и предыдущую (сколько раз???)
-        -- todo подписываемся на таблицу с обезличенными сделками и сохраняем данные (на каждый тик или буферизируем??)
+    --[[
+        Остановка
+    --]]
+    function this:stop()
+        this.running = false
     end
 
     setmetatable(this, self)
@@ -140,4 +182,4 @@ function QuikQuotesProvider:new(params)
     return this
 end
 
-return QuikQuotesProvider
+return QuikQuotesExporter
