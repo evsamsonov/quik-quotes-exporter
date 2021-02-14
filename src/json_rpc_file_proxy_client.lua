@@ -51,6 +51,9 @@ function JsonRpcFileProxyClient:new(params)
     end
     this:checkRequiredParams(params)
 
+    this.requestFilePath = params.requestFilePath
+    this.responseFilePath = params.responseFilePath
+
     -- Current ID for request
     this.currentId = 0
 
@@ -79,10 +82,30 @@ function JsonRpcFileProxyClient:new(params)
         this.responseFile:close()
     end
 
+    --[[
+        Get lock on request file
+    --]]
+    local function getLock()
+        for i = 0, 10 do
+            local lockFileName = this.requestFilePath .. '.lock'
+            local tmpLockFileName = lockFileName .. 'tmp'
+            io.open(tmpLockFileName, 'w'):close()
+
+            if os.rename(tmpLockFileName, lockFileName) then
+                return function()
+                    os.remove(lockFileName)
+                end
+            end
+            sleep(1000)
+        end
+        error('Get lock timeout')
+    end
+
     -- Sends json rpc request and returns response
     function this:sendRequest(method, params)
-        this.currentId = this.currentId + 1
+        local releaseLock = getLock()
 
+        this.currentId = this.currentId + 1
         local id = this.prefix .. this.currentId
         local request = json:encode({
             jsonrpc = '2.0',
@@ -92,6 +115,8 @@ function JsonRpcFileProxyClient:new(params)
         })
         this.requestFile:write(request .. '\n')
         this.requestFile:flush()
+
+        releaseLock()
 
         local response
         local time = os.time()
