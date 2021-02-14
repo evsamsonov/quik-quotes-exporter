@@ -34,6 +34,16 @@ function QuikQuotesExporter:new(params)
     this.running = true
 
     --[[
+        Часы работы скрипта включително. По умолчанию без ограничений
+        table (nullable) = {
+           start int
+           finish int
+        }
+    --]]
+    this.workingHours = params["workingHours"] and params["workingHours"] or nil
+    -- todo валидация
+
+    --[[
         Создает источник данных графика
         @see https://quikluacsharp.ru/quik-qlua/poluchenie-v-qlua-lua-dannyh-iz-grafikov-i-indikatorov/
         @see https://quikluacsharp.ru/qlua-osnovy/spisok-konstant-tajm-frejmov-grafikov/
@@ -60,6 +70,15 @@ function QuikQuotesExporter:new(params)
             end
         end
         return ds
+    end
+
+    --[[
+        На завершение инициализации
+    --]]
+    local function onInitialized()
+        local message = 'QuikQuotesExporter has been started successfully'
+        QuikMessage.show(message, QuikMessage.QUIK_MESSAGE_INFO)
+        this.quotesClient:notify(os.date('%Y-%m-%d %X: ') .. message)
     end
 
     --[[
@@ -96,6 +115,8 @@ function QuikQuotesExporter:new(params)
                 this.instruments[i].lastCandleTime = result.candle.time
             end
         end
+
+        onInitialized()
     end
 
     --[[
@@ -156,19 +177,41 @@ function QuikQuotesExporter:new(params)
     end
 
     --[[
+        @return bool
+    --]]
+    local function isWorkingHour()
+        if this.workingHours == nil then
+            do return true end
+        end
+        local now = os.date("*t")
+        if this.workingHours.start <= this.workingHours.finish then
+            do return now.hour >= this.workingHours.start and now.hour <= this.workingHours.finish end
+        end
+        -- if start > finish
+        do return now.hour >= this.workingHours.start or now.hour <= this.workingHours.finish end
+    end
+
+    --[[
         Запуск
     --]]
     function this:run()
-        init()
-        QuikMessage.show('QuikQuotesExporter has been started successfully', QuikMessage.QUIK_MESSAGE_INFO)
+        local status, err = pcall(function()
+            init()
 
-        while this.running do
-            processInstruments()
+            while this.running do
+                if isWorkingHour() then
+                    processInstruments()
+                end
 
-            sleep(60 * 1000)
+                sleep(60 * 1000)
+            end
+
+            terminate()
+        end)
+        if status == false then
+            QuikMessage.show(err, QuikMessage.QUIK_MESSAGE_ERROR)
+            this.quotesClient:notify(os.date('%Y-%m-%d %X: ') .. message)
         end
-
-        terminate()
     end
 
     --[[

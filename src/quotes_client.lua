@@ -14,7 +14,6 @@ function QuotesClient:new(params)
     end
     this:checkRequiredParams(params)
 
-    -- RPC клиент :required
     this.rpcClient = params.rpcClient
 
     local intervals = {
@@ -75,6 +74,20 @@ function QuotesClient:new(params)
         })
         if response.error ~= nil then
             error('failed to add candle: ' .. response.error.message)
+        end
+    end
+
+    --[[
+        Отправляет оповещение
+
+        @param string message
+    --]]
+    function this:notify(message)
+        local response = this.rpcClient:sendRequest("Notification.Notify", {
+            message = message
+        })
+        if response.error ~= nil then
+            error('failed to notify: ' .. response.error.message)
         end
     end
 

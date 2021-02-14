@@ -1,17 +1,11 @@
 local QuikQuotesExporter = require('src/quik_quotes_exporter')
-local QuikMessage = require('src/quik_message')
 
 local config = require('config')
 
 local quikQuotesExporter
 function main()
-    local status, callError = pcall(function()
-        quikQuotesExporter = QuikQuotesExporter:new(config)
-        quikQuotesExporter:run()
-    end)
-    if status == false then
-        QuikMessage.show('QuikQuotesProvider: ' .. callError, QuikMessage.QUIK_MESSAGE_ERROR)
-    end
+    quikQuotesExporter = QuikQuotesExporter:new(config)
+    quikQuotesExporter:run()
 end
 
 function OnStop()
