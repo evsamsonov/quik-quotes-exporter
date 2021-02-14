@@ -25,14 +25,6 @@ function QuikQuotesExporter:new(params)
 
     this.instruments = params.instruments
 
-    this.rpcClient = nil
-    this.rpcClientRequestFilePath = params.rpcClient.requestFilePath
-    this.rpcClientResponseFilePath = params.rpcClient.responseFilePath
-    this.rpcClientPrefix = params.rpcClient["prefix"] and params.rpcClient["prefix"] or ""
-
-    this.quotesClient = nil
-    this.running = true
-
     --[[
         Часы работы скрипта включително. По умолчанию без ограничений
         table (nullable) = {
@@ -41,7 +33,28 @@ function QuikQuotesExporter:new(params)
         }
     --]]
     this.workingHours = params["workingHours"] and params["workingHours"] or nil
-    -- todo валидация
+    if this.workingHours ~= nil then
+        if this.workingHours.start == nil  then
+            error('Required param workingHours.start not set')
+        end
+        if this.workingHours.finish == nil then
+            error('Required param workingHours.finish not set')
+        end
+        if this.workingHours.start < 0 or this.workingHours.start > 23  then
+            error('Required param workingHours.start should be from 0 to 23')
+        end
+        if this.workingHours.finish < 0 or this.workingHours.finish > 23  then
+            error('Required param workingHours.finish should be from 0 to 23')
+        end
+    end
+
+    this.rpcClient = nil
+    this.rpcClientRequestFilePath = params.rpcClient.requestFilePath
+    this.rpcClientResponseFilePath = params.rpcClient.responseFilePath
+    this.rpcClientPrefix = params.rpcClient["prefix"] and params.rpcClient["prefix"] or ""
+
+    this.quotesClient = nil
+    this.running = true
 
     --[[
         Создает источник данных графика

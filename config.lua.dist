@@ -11,5 +11,9 @@ return {
             secCode = 'SBER',
             interval = INTERVAL_H1,
         }
+    },
+    workingHours = {
+        start = 10,
+        finish = 23,
     }
 }
