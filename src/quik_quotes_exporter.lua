@@ -60,7 +60,6 @@ function QuikQuotesExporter:new(params)
         Создает источник данных графика
         @see https://quikluacsharp.ru/quik-qlua/poluchenie-v-qlua-lua-dannyh-iz-grafikov-i-indikatorov/
         @see https://quikluacsharp.ru/qlua-osnovy/spisok-konstant-tajm-frejmov-grafikov/
-
         @param string classCode     Код класса (например, SPBFUT)
         @param string instrument    Код бумаги (например, SRU0)
         @param interval             Интервал (например, INTERVAL_H1)
