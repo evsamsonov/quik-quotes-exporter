@@ -109,6 +109,7 @@ function QuikQuotesExporter:new(params)
         })
 
         for i, inst in ipairs(this.instruments) do
+            -- Создание источника данных
             local ds, status, err
             status, err = pcall(function()
                 ds = createDataSource(inst.classCode, inst.secCode, inst.interval)
@@ -119,14 +120,39 @@ function QuikQuotesExporter:new(params)
                     .. ':' .. err
                 )
             end
-
             this.instruments[i].dataSource = ds
             this.instruments[i].lastCandleTime = nil
 
+            -- Получение времени последней свечи с сервера
             local result = this.quotesClient:getLastCandle(inst.market, inst.secCode, inst.interval)
             if result.candle ~= nil then
                 this.instruments[i].lastCandleTime = result.candle.time
             end
+
+            -- Выгрузка всех имеющихся тиков
+            local trade, operation
+            local ticks = {}
+            local lotSize = getParamEx(inst.classCode, inst.secCode, "lotsize").param_value
+            for i = 0, getNumberOf("all_trades")-1 do
+                trade = getItem("all_trades", i)
+                if trade.class_code == inst.classCode and trade.sec_code == inst.secCode then
+                    if bit.band(trade.flags, 0x1) == 0x1 then
+                        operation = QuotesClient.SELL
+                    elseif bit.band(trade.flags, 0x2) == 0x2 then
+                        operation = QuotesClient.BUY
+                    end
+
+                    table.insert(ticks, {
+                        id = trade.trade_num,
+                        time = os.time(trade.datetime),
+                        price = trade.price,
+                        volume = math.ceil(trade.qty * lotSize),
+                        operation = operation,
+                    })
+                end
+            end
+            this.quotesClient:addTicks(inst.market, inst.secCode, ticks)
+            ticks = nil
         end
 
         onInitialized()
@@ -222,7 +248,8 @@ function QuikQuotesExporter:new(params)
             terminate()
         end)
         if status == false then
-            QuikMessage.show(err, QuikMessage.QUIK_MESSAGE_ERROR)
+            local message = 'QuikQuotesExporter: ' .. err
+            QuikMessage.show(message, QuikMessage.QUIK_MESSAGE_ERROR)
             this.quotesClient:notify(os.date('%Y-%m-%d %X: ') .. message)
         end
     end

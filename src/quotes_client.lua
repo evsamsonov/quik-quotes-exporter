@@ -1,4 +1,7 @@
-local QuotesClient = {}
+local QuotesClient = {
+    BUY = 1,
+    SELL = 2
+}
 function QuotesClient:new(params)
     local this = {}
 
@@ -29,7 +32,7 @@ function QuotesClient:new(params)
 
         @return table = {
             candle (nullable) = {
-                time        int
+                time        int         unix timestamp
                 high        float
                 low         float
                 open        float
@@ -57,7 +60,7 @@ function QuotesClient:new(params)
         @param string symbol
         @param int interval
         @param table candle {
-            time        string in RFC3339
+            time        int         unix timestamp
             high        float
             low         float
             open        float
@@ -74,6 +77,34 @@ function QuotesClient:new(params)
         })
         if response.error ~= nil then
             error('failed to add candle: ' .. response.error.message)
+        end
+    end
+
+
+
+    --[[
+        Добавляет тики
+
+        @param int market
+        @param string symbol
+        @param array {
+            tick {
+                id          int
+                time        int         unix timestamp
+                price       float
+                volume      float
+                operation   int         1 - buy, 2 - sell
+            }
+        }
+    --]]
+    function this:addTicks(market, symbol, ticks)
+        local response = this.rpcClient:sendRequest("Quotes.AddTicks", {
+            market = market,
+            symbol = symbol,
+            candle = ticks
+        })
+        if response.error ~= nil then
+            error('failed to add ticks: ' .. response.error.message)
         end
     end
 
