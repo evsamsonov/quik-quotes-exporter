@@ -129,29 +129,32 @@ function QuikQuotesExporter:new(params)
             end
 
             -- Выгрузка всех имеющихся тиков
---            local trade, operation
---            local ticks = {}
---            local lotSize = getParamEx(inst.classCode, inst.secCode, "lotsize").param_value
---            for i = 0, getNumberOf("all_trades")-1 do
---                trade = getItem("all_trades", i)
---                if trade.class_code == inst.classCode and trade.sec_code == inst.secCode then
---                    if bit.band(trade.flags, 0x1) == 0x1 then
---                        operation = QuotesClient.SELL
---                    elseif bit.band(trade.flags, 0x2) == 0x2 then
---                        operation = QuotesClient.BUY
---                    end
---
---                    table.insert(ticks, {
---                        id = trade.trade_num,
---                        time = os.time(trade.datetime),
---                        price = trade.price,
---                        volume = math.ceil(trade.qty * lotSize),
---                        operation = operation,
---                    })
---                end
---            end
---            this.quotesClient:addTicks(inst.market, inst.secCode, ticks)
---            ticks = nil
+            local trade, operation
+            local ticks = {}
+            local lotSize = getParamEx(inst.classCode, inst.secCode, "lotsize").param_value
+            local tradeCount = getNumberOf("all_trades")
+            for i = 0, tradeCount - 1 do
+                trade = getItem("all_trades", i)
+                if trade.class_code == inst.classCode and trade.sec_code == inst.secCode then
+                    if bit.band(trade.flags, 0x1) == 0x1 then
+                        operation = QuotesClient.SELL
+                    elseif bit.band(trade.flags, 0x2) == 0x2 then
+                        operation = QuotesClient.BUY
+                    end
+
+                    table.insert(ticks, {
+                        id = trade.trade_num,
+                        time = os.time(trade.datetime),
+                        price = trade.price,
+                        volume = math.ceil(trade.qty * lotSize),
+                        operation = operation,
+                    })
+                end
+                if i == tradeCount - 1 or (i + 1) % 500 == 0 then
+                    this.quotesClient:addTicks(inst.market, inst.secCode, ticks)
+                    ticks = {}
+                end
+            end
         end
 
         onInitialized()
@@ -183,7 +186,6 @@ function QuikQuotesExporter:new(params)
 
     --[[
         Обрабатывает инструмент
-
         @param table inst
     --]]
     local function processInstrument(inst)
@@ -197,10 +199,10 @@ function QuikQuotesExporter:new(params)
                     close = inst.dataSource:C(j),
                     volume = math.ceil(inst.dataSource:V(j)),
                 })
-                inst.lastCandleTime = os.time(inst.dataSource:T(j))
-                inst.lastProcessedDate = os.date("*t")
             end
         end
+        inst.lastCandleTime = os.time(inst.dataSource:T(inst.dataSource:Size()))
+        inst.lastProcessedDate = os.date("*t")
     end
 
     --[[

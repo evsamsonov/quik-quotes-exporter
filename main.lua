@@ -1,3 +1,5 @@
+local inspect = require('lib/inspect')
+
 local QuikQuotesExporter = require('src/quik_quotes_exporter')
 
 local config = require('config')

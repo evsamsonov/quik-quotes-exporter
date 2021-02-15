@@ -1,3 +1,4 @@
+local inspect = require('lib/inspect')
 local QuotesClient = {
     BUY = 1,
     SELL = 2
@@ -78,8 +79,6 @@ function QuotesClient:new(params)
         end
     end
 
-
-
     --[[
         Добавляет тики
         @param int market
@@ -98,7 +97,7 @@ function QuotesClient:new(params)
         local response = this.rpcClient:sendRequest("Quotes.AddTicks", {
             market = market,
             symbol = symbol,
-            candle = ticks
+            ticks = ticks
         })
         if response.error ~= nil then
             error('failed to add ticks: ' .. response.error.message)

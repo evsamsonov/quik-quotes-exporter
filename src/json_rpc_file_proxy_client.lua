@@ -86,7 +86,7 @@ function JsonRpcFileProxyClient:new(params)
         Get lock on request file
     --]]
     local function getLock()
-        for i = 0, 10 do
+        for i = 0, 30 do
             local lockFileName = this.requestFilePath .. '.lock'
             local tmpLockFileName = lockFileName .. 'tmp'
             io.open(tmpLockFileName, 'w'):close()
