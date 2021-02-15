@@ -15,3 +15,9 @@ function OnStop()
         quikQuotesExporter:stop()
     end
 end
+
+function OnAllTrade(trade)
+    if quikQuotesExporter then
+        quikQuotesExporter:onTrade(trade)
+    end
+end

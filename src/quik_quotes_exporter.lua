@@ -25,6 +25,8 @@ function QuikQuotesExporter:new(params)
 
     this.instruments = params.instruments
 
+    this.running = true
+
     --[[
         Часы работы скрипта включително. По умолчанию без ограничений
         table (nullable) = {
@@ -48,13 +50,29 @@ function QuikQuotesExporter:new(params)
         end
     end
 
-    this.rpcClient = nil
-    this.rpcClientRequestFilePath = params.rpcClient.requestFilePath
-    this.rpcClientResponseFilePath = params.rpcClient.responseFilePath
-    this.rpcClientPrefix = params.rpcClient["prefix"] and params.rpcClient["prefix"] or ""
 
-    this.quotesClient = nil
-    this.running = true
+    local rpcClientPrefix = params.rpcClient['prefix'] and params.rpcClient['prefix'] or ''
+    this.quotesClient = QuotesClient:new({
+        rpcClient = JsonRpcFileProxyClient:new({
+            requestFilePath = params.rpcClient.requestFilePath,
+            responseFilePath = params.rpcClient.responseFilePath,
+            prefix = rpcClientPrefix,
+        })
+    })
+
+    --[[
+        Отдельный клиент для сохранения тиков, так как OnAllTrade в QUIK
+        запускается в отдельном потоке и при одновременном выполнении
+        запросов теряются ответы. Это позволяет не импортировать
+        дополнительные библиотеки с примитивами синхронизации
+    --]]
+    this.ticksClient = QuotesClient:new({
+        rpcClient = JsonRpcFileProxyClient:new({
+            requestFilePath = params.rpcClient.requestFilePath,
+            responseFilePath = params.rpcClient.responseFilePath,
+            prefix = rpcClientPrefix .. '-ticks',
+        })
+    })
 
     --[[
         Создает источник данных графика
@@ -97,16 +115,6 @@ function QuikQuotesExporter:new(params)
         Инициализация
     --]]
     local function init()
-        this.rpcClient = JsonRpcFileProxyClient:new({
-            requestFilePath = this.rpcClientRequestFilePath,
-            responseFilePath = this.rpcClientResponseFilePath,
-            prefix = this.rpcClientPrefix,
-        })
-
-        this.quotesClient = QuotesClient:new({
-            rpcClient = this.rpcClient
-        })
-
         for i, inst in ipairs(this.instruments) do
             -- Создание источника данных
             local ds, status, err
@@ -260,6 +268,32 @@ function QuikQuotesExporter:new(params)
     --]]
     function this:stop()
         this.running = false
+    end
+
+    --[[
+        Обработка обезличенной сделки
+    --]]
+    function this:onTrade(trade)
+        for i, inst in ipairs(this.instruments) do
+            if trade.class_code == inst.classCode and trade.sec_code == inst.secCode then
+                local lotSize = getParamEx(inst.classCode, inst.secCode, "lotsize").param_value
+
+                local operation
+                if bit.band(trade.flags, 0x1) == 0x1 then
+                    operation = QuotesClient.SELL
+                elseif bit.band(trade.flags, 0x2) == 0x2 then
+                    operation = QuotesClient.BUY
+                end
+
+                this.ticksClient:addTicks(inst.market, inst.secCode, {{
+                    id = trade.trade_num,
+                    time = os.time(trade.datetime),
+                    price = trade.price,
+                    volume = math.ceil(trade.qty * lotSize),
+                    operation = operation,
+                }})
+            end
+        end
     end
 
     setmetatable(this, self)
