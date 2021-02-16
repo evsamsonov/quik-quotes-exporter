@@ -10,22 +10,32 @@ local QuikQuotesExporter = {
 function QuikQuotesExporter:new(params)
     local this = {}
 
-    this.requiredParams = {
-        'rpcClient',
-        'instruments',
-    }
-    function this:checkRequiredParams(params)
-        for i, key in ipairs(this.requiredParams) do
+    --[[
+        Проверяет наличие обязательных параметров
+        @param table params
+        @param array requiredParams
+    --]]
+    function this:checkRequiredParams(params, requiredParams)
+        for i, key in ipairs(requiredParams) do
             if params[key] == nil then
                 error('Required param ' .. key .. ' not set')
             end
         end
     end
-    this:checkRequiredParams(params)
+    this:checkRequiredParams(params, {
+        'rpcClient',
+        'instruments',
+    })
 
     this.instruments = params.instruments
-
     this.running = true
+    this.quotesClient = QuotesClient:new({
+        rpcClient = JsonRpcFileProxyClient:new({
+            requestFilePath = params.rpcClient.requestFilePath,
+            responseFilePath = params.rpcClient.responseFilePath,
+            idPrefix = params.rpcClient['idPrefix'] and params.rpcClient['idPrefix'] or '',
+        })
+    })
 
     --[[
         Часы работы скрипта включително. По умолчанию без ограничений
@@ -49,30 +59,6 @@ function QuikQuotesExporter:new(params)
             error('Required param workingHours.finish should be from 0 to 23')
         end
     end
-
-
-    local rpcClientPrefix = params.rpcClient['prefix'] and params.rpcClient['prefix'] or ''
-    this.quotesClient = QuotesClient:new({
-        rpcClient = JsonRpcFileProxyClient:new({
-            requestFilePath = params.rpcClient.requestFilePath,
-            responseFilePath = params.rpcClient.responseFilePath,
-            prefix = rpcClientPrefix,
-        })
-    })
-
-    --[[
-        Отдельный клиент для сохранения тиков, так как OnAllTrade в QUIK
-        запускается в отдельном потоке и при одновременном выполнении
-        запросов теряются ответы. Это позволяет не импортировать
-        дополнительные библиотеки с примитивами синхронизации
-    --]]
-    this.ticksClient = QuotesClient:new({
-        rpcClient = JsonRpcFileProxyClient:new({
-            requestFilePath = params.rpcClient.requestFilePath,
-            responseFilePath = params.rpcClient.responseFilePath,
-            prefix = rpcClientPrefix .. '-ticks',
-        })
-    })
 
     --[[
         Создает источник данных графика
@@ -112,6 +98,35 @@ function QuikQuotesExporter:new(params)
     end
 
     --[[
+        Создает tick из trade
+        @param table trade
+        @param int lotSize
+
+        @return table {
+            id int
+            time int
+            price float
+            volume int
+            operation int
+        }
+    --]]
+    local function createTick(trade, lotSize)
+        local operation
+        if bit.band(trade.flags, 0x1) == 0x1 then
+            operation = QuotesClient.SELL
+        elseif bit.band(trade.flags, 0x2) == 0x2 then
+            operation = QuotesClient.BUY
+        end
+        return {
+            id = trade.trade_num,
+            time = os.time(trade.datetime),
+            price = trade.price,
+            volume = math.ceil(trade.qty * lotSize),
+            operation = operation,
+        }
+    end
+
+    --[[
         Инициализация
     --]]
     local function init()
@@ -127,44 +142,33 @@ function QuikQuotesExporter:new(params)
                     .. ':' .. err
                 )
             end
-            this.instruments[i].dataSource = ds
-            this.instruments[i].lastCandleTime = nil
+            inst.dataSource = ds
+            inst.lastCandleTime = nil
+            inst.lotSize = getParamEx(inst.classCode, inst.secCode, "lotsize").param_value
+            inst.trades = {}
 
             -- Получение времени последней свечи с сервера
             local result = this.quotesClient:getLastCandle(inst.market, inst.secCode, inst.interval)
             if result.candle ~= nil then
-                this.instruments[i].lastCandleTime = result.candle.time
+                inst.lastCandleTime = result.candle.time
             end
 
-            -- Выгрузка всех имеющихся тиков
+            -- Выгрузка всех имеющихся тиков в таблице обезличенных сделок]
+            local batchSize = 500
             local trade, operation
             local ticks = {}
-            local lotSize = getParamEx(inst.classCode, inst.secCode, "lotsize").param_value
             local tradeCount = getNumberOf("all_trades")
             for i = 0, tradeCount - 1 do
                 trade = getItem("all_trades", i)
                 if trade.class_code == inst.classCode and trade.sec_code == inst.secCode then
-                    if bit.band(trade.flags, 0x1) == 0x1 then
-                        operation = QuotesClient.SELL
-                    elseif bit.band(trade.flags, 0x2) == 0x2 then
-                        operation = QuotesClient.BUY
-                    end
-
-                    table.insert(ticks, {
-                        id = trade.trade_num,
-                        time = os.time(trade.datetime),
-                        price = trade.price,
-                        volume = math.ceil(trade.qty * lotSize),
-                        operation = operation,
-                    })
+                    table.insert(ticks, createTick(trade, inst.lotSize))
                 end
-                if i == tradeCount - 1 or (i + 1) % 500 == 0 then
+                if i == tradeCount - 1 or (i + 1) % batchSize == 0 then
                     this.quotesClient:addTicks(inst.market, inst.secCode, ticks)
                     ticks = {}
                 end
             end
         end
-
         onInitialized()
     end
 
@@ -179,7 +183,6 @@ function QuikQuotesExporter:new(params)
 
     --[[
         Проверяет необходимость обработать инструмент
-
         @param table inst
 
         @return bool
@@ -214,13 +217,30 @@ function QuikQuotesExporter:new(params)
     end
 
     --[[
+        Отправляет накопленные обезличенные сделки
+    --]]
+    local function flushTrades(inst)
+        local ticks = {}
+        for _, trade in pairs(inst.trades) do
+            table.insert(ticks, createTick(trade, inst.lotSize))
+        end
+
+        this.quotesClient:addTicks(inst.market, inst.secCode, ticks)
+
+        for _, tick in ipairs(ticks) do
+            inst.trades[tick.id] = nil
+        end
+    end
+
+    --[[
         Обрабатывает список инструментов
     --]]
     local function processInstruments()
-        for i, inst in pairs(this.instruments) do
+        for _, inst in pairs(this.instruments) do
             if mustProcessInstrument(inst) then
                 processInstrument(inst)
             end
+            flushTrades(inst)
         end
     end
 
@@ -276,22 +296,7 @@ function QuikQuotesExporter:new(params)
     function this:onTrade(trade)
         for i, inst in ipairs(this.instruments) do
             if trade.class_code == inst.classCode and trade.sec_code == inst.secCode then
-                local lotSize = getParamEx(inst.classCode, inst.secCode, "lotsize").param_value
-
-                local operation
-                if bit.band(trade.flags, 0x1) == 0x1 then
-                    operation = QuotesClient.SELL
-                elseif bit.band(trade.flags, 0x2) == 0x2 then
-                    operation = QuotesClient.BUY
-                end
-
-                this.ticksClient:addTicks(inst.market, inst.secCode, {{
-                    id = trade.trade_num,
-                    time = os.time(trade.datetime),
-                    price = trade.price,
-                    volume = math.ceil(trade.qty * lotSize),
-                    operation = operation,
-                }})
+                inst.trades[trade.trade_num] = trade
             end
         end
     end

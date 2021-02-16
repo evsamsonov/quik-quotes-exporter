@@ -61,7 +61,7 @@ function JsonRpcFileProxyClient:new(params)
     this.requestTimeout = params['requestTimeout'] and params['requestTimeout'] or 30
 
     -- Prefix for ID
-    this.prefix = params['prefix'] and params['prefix'] or ''
+    this.idPrefix = params['idPrefix'] and params['idPrefix'] or ''
 
     local function openFiles(params)
         this.requestFile = io.open(params.requestFilePath, 'a')
@@ -106,7 +106,7 @@ function JsonRpcFileProxyClient:new(params)
         local releaseLock = getLock()
 
         this.currentId = this.currentId + 1
-        local id = this.prefix .. this.currentId
+        local id = this.idPrefix .. this.currentId
         local request = json:encode({
             jsonrpc = '2.0',
             method = method,
