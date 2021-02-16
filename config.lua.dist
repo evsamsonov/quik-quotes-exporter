@@ -2,7 +2,8 @@ local QuikQuotesExporter = require('src/quik_quotes_exporter')
 return {
     rpcClient = {
         requestFilePath = 'Z:\\dev\\rpcin',
-        responseFilePath = 'Z:\\dev\\rpcout'
+        responseFilePath = 'Z:\\dev\\rpcout',
+        idPrefix = 'qe'
     },
     instruments = {
         {

@@ -155,7 +155,7 @@ function QuikQuotesExporter:new(params)
 
             -- Выгрузка всех имеющихся тиков в таблице обезличенных сделок]
             local batchSize = 500
-            local trade, operation
+            local trade
             local ticks = {}
             local tradeCount = getNumberOf("all_trades")
             for i = 0, tradeCount - 1 do
@@ -218,17 +218,22 @@ function QuikQuotesExporter:new(params)
 
     --[[
         Отправляет накопленные обезличенные сделки
+        @param table inst
     --]]
     local function flushTrades(inst)
         local ticks = {}
         for _, trade in pairs(inst.trades) do
             table.insert(ticks, createTick(trade, inst.lotSize))
+            inst.trades[trade.trade_num] = nil
         end
 
-        this.quotesClient:addTicks(inst.market, inst.secCode, ticks)
-
-        for _, tick in ipairs(ticks) do
-            inst.trades[tick.id] = nil
+        local batchSize = 500
+        local batch = {}
+        for i = 1, #ticks do
+            table.insert(batch, ticks[i])
+            if i == #ticks or i % batchSize == 0 then
+                this.quotesClient:addTicks(inst.market, inst.secCode, batch)
+            end
         end
     end
 
