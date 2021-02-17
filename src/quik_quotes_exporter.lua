@@ -233,6 +233,7 @@ function QuikQuotesExporter:new(params)
             table.insert(batch, ticks[i])
             if i == #ticks or i % batchSize == 0 then
                 this.quotesClient:addTicks(inst.market, inst.secCode, batch)
+                batch = {}
             end
         end
     end
