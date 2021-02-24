@@ -72,15 +72,15 @@ JSON-RPC сервер для корректной работы скрипта д
 Метод  | Описание 
 ------------- | -------------
 [Quotes.GetLastCandle](#quotesgetlastcandle) | Получение последней известной свечи 
-Quotes.AddCandle | Добавление свечи
-Quotes.AddTicks | Добавлене обезличенных сделок 
-Notification.Notify | Оповещение
+[Quotes.AddCandle](#quotesaddcandle) | Добавление свечи
+[Quotes.AddTicks](#quotesaddticks) | Добавлене обезличенных сделок 
+[Notification.Notify](#notificationnotify) | Оповещение
 
 Далее подробное описание методов.
 
 ### Quotes.GetLastCandle 
 
-Используется для получения последней известной свечи. Перезапись значений!
+Используется для получения последней известной свечи. Перезапись значений! null
 
 **Параметры**
 
