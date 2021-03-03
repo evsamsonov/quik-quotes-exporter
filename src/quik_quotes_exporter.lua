@@ -126,6 +126,28 @@ function QuikQuotesExporter:new(params)
         }
     end
 
+    -- todo описать inst
+    --[[
+        Отправляет все обезличенные сделки из таблицы сделок по полученному инструменту
+        @param table inst
+    ]]--
+    local function sendAllTrades(inst)
+        local batchSize = 500
+        local trade
+        local ticks = {}
+        local tradeCount = getNumberOf("all_trades")
+        for i = 0, tradeCount - 1 do
+            trade = getItem("all_trades", i)
+            if trade.class_code == inst.classCode and trade.sec_code == inst.secCode then
+                table.insert(ticks, createTick(trade, inst.lotSize))
+            end
+            if i == tradeCount - 1 or (i + 1) % batchSize == 0 then
+                this.quotesClient:addTicks(inst.market, inst.secCode, ticks)
+                ticks = {}
+            end
+        end
+    end
+
     --[[
         Инициализация
     --]]
@@ -153,21 +175,7 @@ function QuikQuotesExporter:new(params)
                 inst.lastCandleTime = result.candle.time
             end
 
-            -- Выгрузка всех имеющихся тиков в таблице обезличенных сделок]
-            local batchSize = 500
-            local trade
-            local ticks = {}
-            local tradeCount = getNumberOf("all_trades")
-            for i = 0, tradeCount - 1 do
-                trade = getItem("all_trades", i)
-                if trade.class_code == inst.classCode and trade.sec_code == inst.secCode then
-                    table.insert(ticks, createTick(trade, inst.lotSize))
-                end
-                if i == tradeCount - 1 or (i + 1) % batchSize == 0 then
-                    this.quotesClient:addTicks(inst.market, inst.secCode, ticks)
-                    ticks = {}
-                end
-            end
+            sendAllTrades(inst)
         end
         onInitialized()
     end
@@ -196,24 +204,57 @@ function QuikQuotesExporter:new(params)
     end
 
     --[[
+        Вызывает функцию и повторяет вызов переданное число раз при неуспехе
+        @param func function
+        @param timeout int      Таймаут между попытками в секундах (по умолчанию 1)
+        @param count int        Кол-во повторений (по умолчанию 3)
+    ]]--
+    local function withRetry(func, timeout, count)
+        timeout = (timeout ~= nil) and timeout or 1
+        count = (count ~= nil) and count or 3
+        local result, status, err
+        for i = 1, count do
+            status, err = pcall(function()
+                result = func()
+            end)
+            if err == nil then
+                do return result end
+            end
+            sleep(timeout * 1000)
+        end
+        error(err)
+    end
+
+    --[[
         Обрабатывает инструмент
         @param table inst
     --]]
     local function processInstrument(inst)
+        local status, err
         for j = inst.dataSource:Size(), 1, -1 do
             if os.time(inst.dataSource:T(j)) >= inst.lastCandleTime then
-                this.quotesClient:addCandle(inst.market, inst.secCode, inst.interval, {
-                    time = os.time(inst.dataSource:T(j)),
-                    high = inst.dataSource:H(j),
-                    low = inst.dataSource:L(j),
-                    open = inst.dataSource:O(j),
-                    close = inst.dataSource:C(j),
-                    volume = math.ceil(inst.dataSource:V(j)),
-                })
+                status, err = pcall(function()
+                    withRetry(function()
+                        this.quotesClient:addCandle(inst.market, inst.secCode, inst.interval, {
+                            time = os.time(inst.dataSource:T(j)),
+                            high = inst.dataSource:H(j),
+                            low = inst.dataSource:L(j),
+                            open = inst.dataSource:O(j),
+                            close = inst.dataSource:C(j),
+                            volume = math.ceil(inst.dataSource:V(j)),
+                        })
+                    end)
+                end)
+                if err ~= nil then
+                    -- todo вынести в метод
+                    local message = 'QuikQuotesExporter: ' .. err
+                    QuikMessage.show(message, QuikMessage.QUIK_MESSAGE_INFO)
+                    this.quotesClient:notify(os.date('%Y-%m-%d %X: ') .. message)
+                end
             end
         end
         inst.lastCandleTime = os.time(inst.dataSource:T(inst.dataSource:Size()))
-        inst.lastProcessedDate = os.date("*t")
+        inst.lastProcessedDate = os.date("*t")  -- fixme пофиксить это
     end
 
     --[[
@@ -232,6 +273,7 @@ function QuikQuotesExporter:new(params)
         for i = 1, #ticks do
             table.insert(batch, ticks[i])
             if i == #ticks or i % batchSize == 0 then
+                -- todo retry
                 this.quotesClient:addTicks(inst.market, inst.secCode, batch)
                 batch = {}
             end
