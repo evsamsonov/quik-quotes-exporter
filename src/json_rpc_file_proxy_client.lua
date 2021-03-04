@@ -89,11 +89,13 @@ function JsonRpcFileProxyClient:new(params)
         for i = 0, 30 do
             local lockFileName = this.requestFilePath .. '.lock'
             local tmpLockFileName = lockFileName .. 'tmp'
-            io.open(tmpLockFileName, 'w'):close()
-
-            if os.rename(tmpLockFileName, lockFileName) then
-                return function()
-                    os.remove(lockFileName)
+            local file = io.open(tmpLockFileName, 'w')
+            if file ~= nil then
+                file:close()
+                if os.rename(tmpLockFileName, lockFileName) then
+                    return function()
+                        os.remove(lockFileName)
+                    end
                 end
             end
             sleep(1000)
