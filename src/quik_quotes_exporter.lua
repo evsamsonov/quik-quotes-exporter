@@ -9,6 +9,7 @@ local QuikQuotesExporter = {
 }
 function QuikQuotesExporter:new(params)
     local this = {}
+    local VERSION = 'v1.0.0'
 
     --[[
         Проверяет наличие обязательных параметров
@@ -92,7 +93,7 @@ function QuikQuotesExporter:new(params)
         На завершение инициализации
     --]]
     local function onInitialized()
-        local message = 'QuikQuotesExporter has been started successfully'
+        local message = 'QuikQuotesExporter ' + VERSION + ' has been started successfully'
         QuikMessage.show(message, QuikMessage.QUIK_MESSAGE_INFO)
         this.quotesClient:notify(os.date('%Y-%m-%d %X: ') .. message)
     end
@@ -206,11 +207,11 @@ function QuikQuotesExporter:new(params)
     --[[
         Вызывает функцию и повторяет вызов переданное число раз при неуспехе
         @param func function
-        @param timeout int      Таймаут между попытками в секундах (по умолчанию 1)
-        @param count int        Кол-во повторений (по умолчанию 3)
+        @param timeout int      Таймаут между попытками в секундах
+        @param count int        Кол-во повторений
     ]]--
     local function withRetry(func, timeout, count)
-        timeout = (timeout ~= nil) and timeout or 1
+        timeout = (timeout ~= nil) and timeout or 10
         count = (count ~= nil) and count or 3
         local result, status, err
         for i = 1, count do
@@ -223,6 +224,16 @@ function QuikQuotesExporter:new(params)
             sleep(timeout * 1000)
         end
         error(err)
+    end
+
+    --[[
+        Сообщает об ошибках
+        @param string err
+    ]]--
+    local function reportError(err)
+        local message = 'QuikQuotesExporter: ' .. err
+        QuikMessage.show(message, QuikMessage.QUIK_MESSAGE_INFO)
+        this.quotesClient:notify(os.date('%Y-%m-%d %X: ') .. message)
     end
 
     --[[
@@ -246,15 +257,12 @@ function QuikQuotesExporter:new(params)
                     end)
                 end)
                 if err ~= nil then
-                    -- todo вынести в метод
-                    local message = 'QuikQuotesExporter: ' .. err
-                    QuikMessage.show(message, QuikMessage.QUIK_MESSAGE_INFO)
-                    this.quotesClient:notify(os.date('%Y-%m-%d %X: ') .. message)
+                    reportError(err)
                 end
             end
         end
         inst.lastCandleTime = os.time(inst.dataSource:T(inst.dataSource:Size()))
-        inst.lastProcessedDate = os.date("*t")  -- fixme пофиксить это
+        inst.lastProcessedDate = os.date("*t")
     end
 
     --[[
@@ -268,13 +276,15 @@ function QuikQuotesExporter:new(params)
             inst.trades[trade.trade_num] = nil
         end
 
+        local status, err
         local batchSize = 500
         local batch = {}
         for i = 1, #ticks do
             table.insert(batch, ticks[i])
             if i == #ticks or i % batchSize == 0 then
-                -- todo retry
-                this.quotesClient:addTicks(inst.market, inst.secCode, batch)
+                withRetry(function()
+                    this.quotesClient:addTicks(inst.market, inst.secCode, batch)
+                end)
                 batch = {}
             end
         end
@@ -325,9 +335,7 @@ function QuikQuotesExporter:new(params)
             terminate()
         end)
         if status == false then
-            local message = 'QuikQuotesExporter: ' .. err
-            QuikMessage.show(message, QuikMessage.QUIK_MESSAGE_ERROR)
-            this.quotesClient:notify(os.date('%Y-%m-%d %X: ') .. message)
+            reportError(err)
         end
     end
 
