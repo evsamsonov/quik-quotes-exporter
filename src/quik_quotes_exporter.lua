@@ -91,7 +91,7 @@ function QuikQuotesExporter:new(params)
         На завершение инициализации
     --]]
     local function onInitialized()
-        local message = 'QuikQuotesExporter ' + VERSION + ' has been started successfully'
+        local message = 'QuikQuotesExporter ' .. VERSION .. ' has been started successfully'
         QuikMessage.show(message, QuikMessage.QUIK_MESSAGE_INFO)
         this.quotesClient:notify(os.date('%Y-%m-%d %X: ') .. message)
     end
