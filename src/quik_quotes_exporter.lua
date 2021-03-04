@@ -180,12 +180,16 @@ function QuikQuotesExporter:new(params)
     end
 
     --[[
-        Освобождение ресурсов
+        Завершение работы
     --]]
     local function terminate()
         for i, inst in ipairs(this.instruments) do
             inst.dataSource:Close()
         end
+
+        local message = 'QuikQuotesExporter has been stopped'
+        QuikMessage.show(message, QuikMessage.QUIK_MESSAGE_INFO)
+        this.quotesClient:notify(os.date('%Y-%m-%d %X: ') .. message)
     end
 
     --[[
@@ -329,12 +333,12 @@ function QuikQuotesExporter:new(params)
 
                 sleep(60 * 1000)
             end
-
-            terminate()
         end)
         if status == false then
             reportError(err)
         end
+
+        terminate()
     end
 
     --[[
