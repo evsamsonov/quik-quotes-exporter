@@ -187,9 +187,7 @@ function QuikQuotesExporter:new(params)
             inst.dataSource:Close()
         end
 
-        local message = 'QuikQuotesExporter has been stopped'
-        QuikMessage.show(message, QuikMessage.QUIK_MESSAGE_INFO)
-        this.quotesClient:notify(os.date('%Y-%m-%d %X: ') .. message)
+        -- закрыть rpc клиент
     end
 
     --[[
@@ -323,6 +321,7 @@ function QuikQuotesExporter:new(params)
         Запуск
     --]]
     function this:run()
+        local minute = 60 * 1000
         local status, err = pcall(function()
             init()
 
@@ -331,7 +330,7 @@ function QuikQuotesExporter:new(params)
                     processInstruments()
                 end
 
-                sleep(60 * 1000)
+                sleep(minute)
             end
         end)
         if status == false then
