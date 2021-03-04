@@ -1,4 +1,3 @@
-local inspect = require('lib/inspect')
 local QuotesClient = {
     BUY = 1,
     SELL = 2

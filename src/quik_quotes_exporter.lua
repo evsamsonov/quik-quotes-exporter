@@ -1,5 +1,3 @@
-local inspect = require('lib/inspect')
-
 local QuotesClient = require('src/quotes_client')
 local QuikMessage = require('src/quik_message')
 local JsonRpcFileProxyClient = require('src/json_rpc_file_proxy_client')
