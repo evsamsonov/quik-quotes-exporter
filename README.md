@@ -212,6 +212,13 @@ ticks[].operation  | Одно из двух значений: 1 - покупка
             "price": 162.41,
             "volume": 10,     
             "operation": 2
+         },
+         {
+            "id": 2683497840,
+            "time": 1613340426,
+            "price": 162.42,
+            "volume": 400,     
+            "operation": 1
          }
       ]
    },
@@ -220,7 +227,7 @@ ticks[].operation  | Одно из двух значений: 1 - покупка
 ```
 
 ```bash
-curl -H "Content-Type: application/json" -X POST -d  '{"jsonrpc": "2.0", "method": "Quotes.AddTicks", "params":{"market":1, "symbol":"SBER", "ticks": [{"id": 2683497839, "time": 1613340425, "price": 162.41, "volume": 10, "operation":2}]}, "id": "1"}'  http://127.0.0.1:8080/rpc
+curl -H "Content-Type: application/json" -X POST -d  '{"jsonrpc": "2.0", "method": "Quotes.AddTicks", "params":{"market":1, "symbol":"SBER", "ticks": [{"id": 2683497839, "time": 1613340425, "price": 162.41, "volume": 10, "operation":2},{"id": 2683497840, "time": 1613340426, "price": 162.42, "volume": 400, "operation":1}]}, "id": "1"}'  http://127.0.0.1:8080/rpc
 ```
 
 Ответ:
@@ -269,4 +276,3 @@ curl -H "Content-Type: application/json" -X POST -d  '{"jsonrpc": "2.0", "method
 ## Задачи
 - Добавить другие интервалы
 - Реализовать пример принимающего данные сервера
-

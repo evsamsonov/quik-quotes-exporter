@@ -1,6 +1,6 @@
 local QuotesClient = require('src/quotes_client')
 local QuikMessage = require('src/quik_message')
-local JsonRpcFileProxyClient = require('src/json_rpc_file_proxy_client')
+local JsonRpcFSProxyClient = require('src/jsonrpc_fsproxy_client')
 
 local QuikQuotesExporter = {
     MOSCOW_EXCHANGE_MARKET = 1
@@ -29,7 +29,7 @@ function QuikQuotesExporter:new(params)
     this.instruments = params.instruments
     this.running = true
     this.quotesClient = QuotesClient:new({
-        rpcClient = JsonRpcFileProxyClient:new({
+        rpcClient = JsonRpcFSProxyClient:new({
             requestFilePath = params.rpcClient.requestFilePath,
             responseFilePath = params.rpcClient.responseFilePath,
             idPrefix = params.rpcClient['idPrefix'] and params.rpcClient['idPrefix'] or '',
