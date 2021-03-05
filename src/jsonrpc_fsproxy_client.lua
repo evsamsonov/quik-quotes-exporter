@@ -3,30 +3,28 @@
 --
 -- How to use
 --
---   local pcallStatus, pcallError
---
---   local rpcClient
---   pcallStatus, pcallError = pcall(function()
---      rpcClient = JsonRpcFileProxyClient:new({
---          requestFilePath = 'request.pipe',
---          responseFilePath = 'response.pipe',
+--   local rpcClient, status, err
+--   status, err = pcall(function()
+--      rpcClient = JsonRpcFSProxyClient:new({
+--          requestFilePath = 'rpcin',
+--          responseFilePath = 'rpcout',
 --          requestTimeout = 60
 --      })
 --   end)
---   if false == pcallStatus then
---      print(pcallError.message)
+--   if false == status then
+--      print(err)
 --      do return end
 --   end
 --
---   local openSignal
---   pcallStatus, pcallError = pcall(function()
---      openSignal = rpcClient:sendRequest('Method', {
---          param1 = 'param1'
---          param2 = 'param2'
+--   local result
+--   status, err = pcall(function()
+--      result = rpcClient:sendRequest('Method', {
+--          param1 = 'value1'
+--          param2 = 'value2'
 --      })
 --   end)
---   if false == pcallStatus then
---      print(pcallError.message)
+--   if false == status then
+--      print(err)
 --      do return end
 --   end
 --
@@ -34,8 +32,8 @@
 --
 local json = require('./lib/json')
 
-local JsonRpcFileProxyClient = {}
-function JsonRpcFileProxyClient:new(params)
+local JsonRpcFSProxyClient = {}
+function JsonRpcFSProxyClient:new(params)
     local this = {}
 
     this.requiredParams = {
@@ -146,4 +144,4 @@ function JsonRpcFileProxyClient:new(params)
     return this
 end
 
-return JsonRpcFileProxyClient
+return JsonRpcFSProxyClient
