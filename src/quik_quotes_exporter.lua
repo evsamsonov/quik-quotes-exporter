@@ -26,6 +26,23 @@ function QuikQuotesExporter:new(params)
         'instruments',
     })
 
+    --[[
+        Список обрабатываемых инструментов
+        [
+            {
+                market int              Рынок
+                classCode string        Код класса
+                secCode string          Код инструмента
+                interval int            Интервал
+                lastCandleTime int      Время последней известной свечи в Unix Timestamp
+                dataSource DataSource   Источник данных QUIK
+                lotSize int             Размер лота
+                trades table            Буфер для обезличенных сделок
+                lastProcessedDate date  Дата последней обработки инструмента
+            },
+            ...
+        ]
+    ]]--
     this.instruments = params.instruments
     this.running = true
     this.quotesClient = QuotesClient:new({
@@ -125,10 +142,9 @@ function QuikQuotesExporter:new(params)
         }
     end
 
-    -- todo описать inst
     --[[
         Отправляет все обезличенные сделки из таблицы сделок по полученному инструменту
-        @param table inst
+        @param table inst   Инструмент
     ]]--
     local function sendAllTrades(inst)
         local batchSize = 500
@@ -186,8 +202,6 @@ function QuikQuotesExporter:new(params)
         for i, inst in ipairs(this.instruments) do
             inst.dataSource:Close()
         end
-
-        -- закрыть rpc клиент
     end
 
     --[[
