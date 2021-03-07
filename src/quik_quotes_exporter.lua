@@ -8,6 +8,7 @@ local QuikQuotesExporter = {
 function QuikQuotesExporter:new(params)
     local this = {}
     local VERSION = 'v1.0.0'
+    local TICK_BATCH_SIZE = 500
 
     --[[
         Проверяет наличие обязательных параметров
@@ -147,7 +148,7 @@ function QuikQuotesExporter:new(params)
         @param table inst   Инструмент
     ]]--
     local function sendAllTrades(inst)
-        local batchSize = 500
+        local batchSize = TICK_BATCH_SIZE
         local trade
         local ticks = {}
         local tradeCount = getNumberOf("all_trades")
@@ -227,17 +228,17 @@ function QuikQuotesExporter:new(params)
     local function withRetry(func, timeout, count)
         timeout = (timeout ~= nil) and timeout or 10
         count = (count ~= nil) and count or 3
-        local result, status, err
+        local result, status
         for i = 1, count do
-            status, err = pcall(function()
-                result = func()
+            status, result = pcall(function()
+                return func()
             end)
-            if err == nil then
+            if status then
                 do return result end
             end
             sleep(timeout * 1000)
         end
-        error(err)
+        error(result)
     end
 
     --[[
@@ -255,10 +256,10 @@ function QuikQuotesExporter:new(params)
         @param table inst
     --]]
     local function processInstrument(inst)
-        local status, err
+        local status, result
         for j = inst.dataSource:Size(), 1, -1 do
             if os.time(inst.dataSource:T(j)) >= inst.lastCandleTime then
-                status, err = pcall(function()
+                status, result = pcall(function()
                     withRetry(function()
                         this.quotesClient:addCandle(inst.market, inst.secCode, inst.interval, {
                             time = os.time(inst.dataSource:T(j)),
@@ -270,8 +271,8 @@ function QuikQuotesExporter:new(params)
                         })
                     end)
                 end)
-                if err ~= nil then
-                    reportError(err)
+                if not status then
+                    reportError(result)
                 end
             end
         end
@@ -290,8 +291,7 @@ function QuikQuotesExporter:new(params)
             inst.trades[trade.trade_num] = nil
         end
 
-        local status, err
-        local batchSize = 500
+        local batchSize = TICK_BATCH_SIZE
         local batch = {}
         for i = 1, #ticks do
             table.insert(batch, ticks[i])
