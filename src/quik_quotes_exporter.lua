@@ -39,7 +39,6 @@ function QuikQuotesExporter:new(params)
                 dataSource DataSource   Источник данных QUIK
                 lotSize int             Размер лота
                 trades table            Буфер для обезличенных сделок
-                lastProcessedDate date  Дата последней обработки инструмента
             },
             ...
         ]
@@ -206,20 +205,6 @@ function QuikQuotesExporter:new(params)
     end
 
     --[[
-        Проверяет необходимость обработать инструмент
-        @param table inst
-
-        @return bool
-    --]]
-    local function mustProcessInstrument(inst)
-        local now = os.date("*t")
-        if inst.interval == INTERVAL_H1 and (inst.lastProcessedDate == nil or now.hour ~= inst.lastProcessedDate.hour) then
-            return true
-        end
-        return false
-    end
-
-    --[[
         Вызывает функцию и повторяет вызов переданное число раз при неуспехе
         @param func function
         @param timeout int      Таймаут между попытками в секундах
@@ -256,6 +241,10 @@ function QuikQuotesExporter:new(params)
         @param table inst
     --]]
     local function processInstrument(inst)
+        if os.time(inst.dataSource:T(inst.dataSource:Size())) == inst.lastCandleTime then
+            do return end
+        end
+
         local status, result
         for j = inst.dataSource:Size(), 1, -1 do
             if os.time(inst.dataSource:T(j)) >= inst.lastCandleTime then
@@ -277,7 +266,6 @@ function QuikQuotesExporter:new(params)
             end
         end
         inst.lastCandleTime = os.time(inst.dataSource:T(inst.dataSource:Size()))
-        inst.lastProcessedDate = os.date("*t")
     end
 
     --[[
@@ -309,9 +297,7 @@ function QuikQuotesExporter:new(params)
     --]]
     local function processInstruments()
         for _, inst in pairs(this.instruments) do
-            if mustProcessInstrument(inst) then
-                processInstrument(inst)
-            end
+            processInstrument(inst)
             flushTrades(inst)
         end
     end
