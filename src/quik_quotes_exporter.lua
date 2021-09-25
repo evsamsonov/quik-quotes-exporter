@@ -7,7 +7,7 @@ local QuikQuotesExporter = {
 }
 function QuikQuotesExporter:new(params)
     local this = {}
-    local VERSION = 'v1.0.0'
+    local VERSION = 'v1.0.2'
     local TICK_BATCH_SIZE = 500
 
     --[[
@@ -256,7 +256,7 @@ function QuikQuotesExporter:new(params)
                             low = inst.dataSource:L(j),
                             open = inst.dataSource:O(j),
                             close = inst.dataSource:C(j),
-                            volume = math.ceil(inst.dataSource:V(j)),
+                            volume = math.ceil(inst.dataSource:V(j) * inst.lotSize),
                         })
                     end)
                 end)
