@@ -1,3 +1,5 @@
+local inspect = require('lib/inspect')
+
 --
 -- Client for https://github.com/evsamsonov/jsonrpc-fsproxy
 --
@@ -9,6 +11,7 @@
 --          requestFilePath = 'rpcin',
 --          responseFilePath = 'rpcout',
 --          requestTimeout = 60
+--          reopenOnRequest = true
 --      })
 --   end)
 --   if false == status then
@@ -61,10 +64,19 @@ function JsonRpcFSProxyClient:new(params)
     -- Prefix for ID
     this.idPrefix = params['idPrefix'] and params['idPrefix'] or ''
 
-    local function openFiles(params)
-        this.requestFile = io.open(params.requestFilePath, 'a')
+    -- Reopen request file on each request
+    this.reopenOnRequest = (type(params.reopenOnRequest) ~= 'nil' and {params.reopenOnRequest} or {true})[1]
+
+    local function openRequestFile()
+        this.requestFile = io.open(this.requestFilePath, 'a')
         if this.requestFile == nil then
             error('Failed open request file')
+        end
+    end
+
+    local function openFiles(params)
+        if not this.reopenOnRequest then
+            openRequestFile()
         end
 
         this.responseFile = io.open(params.responseFilePath, 'r')
@@ -103,6 +115,10 @@ function JsonRpcFSProxyClient:new(params)
 
     -- Sends json rpc request and returns response
     function this:sendRequest(method, params)
+        if this.reopenOnRequest then
+            openRequestFile()
+        end
+
         local releaseLock = getLock()
 
         this.currentId = this.currentId + 1
@@ -115,6 +131,9 @@ function JsonRpcFSProxyClient:new(params)
         })
         this.requestFile:write(request .. '\n')
         this.requestFile:flush()
+        if this.reopenOnRequest then
+            this.requestFile:close()
+        end
 
         releaseLock()
 
@@ -129,7 +148,7 @@ function JsonRpcFSProxyClient:new(params)
                 end
             end
             if os.difftime(os.time(), time) > this.requestTimeout then
-                error('Request timeout, id ' .. id)
+                error('Request timeout, id ' .. id .. ' ' .. os.date('!%Y-%m-%d-%H:%M:%S GMT', os.time()))
             end
         end
         do return response end
