@@ -130,7 +130,7 @@ function JsonRpcFSProxyClient:new(params)
                 end
             end
             if os.difftime(os.time(), time) > this.requestTimeout then
-                error('Request timeout, id ' .. id .. ' ' .. os.date('!%Y-%m-%d-%H:%M:%S GMT', os.time()))
+                error('Request timeout, id ' .. id)
             end
         end
         do return response end
