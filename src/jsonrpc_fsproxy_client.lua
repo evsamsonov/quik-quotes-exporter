@@ -62,21 +62,7 @@ function JsonRpcFSProxyClient:new(params)
     -- Prefix for ID
     this.idPrefix = params['idPrefix'] and params['idPrefix'] or ''
 
-    -- Reopen request file on each request
-    this.reopenOnRequest = (type(params.reopenOnRequest) ~= 'nil' and {params.reopenOnRequest} or {true})[1]
-
-    local function openRequestFile()
-        this.requestFile = io.open(this.requestFilePath, 'a')
-        if this.requestFile == nil then
-            error('Failed open request file')
-        end
-    end
-
     local function openFiles(params)
-        if not this.reopenOnRequest then
-            openRequestFile()
-        end
-
         this.responseFile = io.open(params.responseFilePath, 'r')
         if this.responseFile == nil then
             error('Failed open response file')
@@ -86,7 +72,6 @@ function JsonRpcFSProxyClient:new(params)
     openFiles(params)
 
     local function closeFiles()
-        this.requestFile:close()
         this.responseFile:close()
     end
 
@@ -113,8 +98,9 @@ function JsonRpcFSProxyClient:new(params)
 
     -- Sends json rpc request and returns response
     function this:sendRequest(method, params)
-        if this.reopenOnRequest then
-            openRequestFile()
+        this.requestFile = io.open(this.requestFilePath, 'a')
+        if this.requestFile == nil then
+            error('Failed open request file')
         end
 
         local releaseLock = getLock()
@@ -129,9 +115,7 @@ function JsonRpcFSProxyClient:new(params)
         })
         this.requestFile:write(request .. '\n')
         this.requestFile:flush()
-        if this.reopenOnRequest then
-            this.requestFile:close()
-        end
+        this.requestFile:close()
 
         releaseLock()
 
