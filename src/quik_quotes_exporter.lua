@@ -7,7 +7,7 @@ local QuikQuotesExporter = {
 }
 function QuikQuotesExporter:new(params)
     local this = {}
-    local VERSION = 'v1.0.2'
+    local VERSION = 'v1.0.3'
     local TICK_BATCH_SIZE = 500
 
     --[[
