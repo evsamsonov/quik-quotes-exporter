@@ -9,7 +9,6 @@
 --          requestFilePath = 'rpcin',
 --          responseFilePath = 'rpcout',
 --          requestTimeout = 60
---          reopenOnRequest = true
 --      })
 --   end)
 --   if false == status then
