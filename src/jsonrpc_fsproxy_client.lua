@@ -1,5 +1,3 @@
-local inspect = require('lib/inspect')
-
 --
 -- Client for https://github.com/evsamsonov/jsonrpc-fsproxy
 --
