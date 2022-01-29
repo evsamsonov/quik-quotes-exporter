@@ -165,6 +165,7 @@ function QuikQuotesExporter:new(params)
 
     --[[
         Инициализация источника данных
+        @param table inst   Инструмент
     --]]
     local function initDataSource(inst)
         local ds, status, err
@@ -173,7 +174,7 @@ function QuikQuotesExporter:new(params)
         end)
         if status == false then
             error(
-        'failed to create data source ' .. inst.classCode .. ', ' .. inst.secCode  .. ', ' .. inst.interval
+            'failed to create data source ' .. inst.classCode .. ', ' .. inst.secCode  .. ', ' .. inst.interval
                 .. ':' .. err
             )
         end
