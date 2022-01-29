@@ -1,6 +1,7 @@
 local QuotesClient = require('src/quotes_client')
 local QuikMessage = require('src/quik_message')
 local JsonRpcFSProxyClient = require('src/jsonrpc_fsproxy_client')
+local inspect = require('lib/inspect')
 
 local QuikQuotesExporter = {
     MOSCOW_EXCHANGE_MARKET = 1
@@ -164,22 +165,28 @@ function QuikQuotesExporter:new(params)
     end
 
     --[[
+        Инициализация источника данных
+    --]]
+    local function initDataSource(inst)
+        local ds, status, err
+        status, err = pcall(function()
+            ds = createDataSource(inst.classCode, inst.secCode, inst.interval)
+        end)
+        if status == false then
+            error(
+        'failed to create data source ' .. inst.classCode .. ', ' .. inst.secCode  .. ', ' .. inst.interval
+                .. ':' .. err
+            )
+        end
+        do return ds end
+    end
+
+    --[[
         Инициализация
     --]]
     local function init()
         for i, inst in ipairs(this.instruments) do
-            -- Создание источника данных
-            local ds, status, err
-            status, err = pcall(function()
-                ds = createDataSource(inst.classCode, inst.secCode, inst.interval)
-            end)
-            if status == false then
-                error(
-                    'failed to create data source ' .. inst.classCode .. ', ' .. inst.secCode  .. ', ' .. inst.interval
-                    .. ':' .. err
-                )
-            end
-            inst.dataSource = ds
+            inst.dataSource = initDataSource(inst)
             inst.lastCandleTime = nil
             inst.lotSize = getParamEx(inst.classCode, inst.secCode, "lotsize").param_value
             inst.trades = {}
@@ -241,6 +248,10 @@ function QuikQuotesExporter:new(params)
         @param table inst
     --]]
     local function processInstrument(inst)
+        if inst.dataSource:Size() == 0 then
+            inst.dataSource = initDataSource(inst)
+        end
+
         if os.time(inst.dataSource:T(inst.dataSource:Size())) == inst.lastCandleTime then
             do return end
         end
