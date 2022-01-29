@@ -1,7 +1,6 @@
 local QuotesClient = require('src/quotes_client')
 local QuikMessage = require('src/quik_message')
 local JsonRpcFSProxyClient = require('src/jsonrpc_fsproxy_client')
-local inspect = require('lib/inspect')
 
 local QuikQuotesExporter = {
     MOSCOW_EXCHANGE_MARKET = 1
