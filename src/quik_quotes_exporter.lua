@@ -174,7 +174,7 @@ function QuikQuotesExporter:new(params)
         end)
         if status == false then
             error(
-            'failed to create data source ' .. inst.classCode .. ', ' .. inst.secCode  .. ', ' .. inst.interval
+                'failed to create data source ' .. inst.classCode .. ', ' .. inst.secCode  .. ', ' .. inst.interval
                 .. ':' .. err
             )
         end
