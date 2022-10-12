@@ -22,7 +22,13 @@ function QuotesClient:new(params)
     local intervals = {
         [INTERVAL_M1] = 1,
         [INTERVAL_M5] = 2,
-        [INTERVAL_H1] = 6
+        [INTERVAL_M10] = 3,
+        [INTERVAL_M15] = 4,
+        [INTERVAL_M30] = 5,
+        [INTERVAL_H1] = 6,
+        [INTERVAL_D1] = 7,
+        [INTERVAL_W1] = 8,
+        [INTERVAL_MN1] = 9
     }
 
     --[[
