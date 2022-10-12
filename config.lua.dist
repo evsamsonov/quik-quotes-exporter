@@ -10,7 +10,7 @@ return {
             market = QuikQuotesExporter.MOSCOW_EXCHANGE_MARKET,
             classCode = 'TQBR',
             secCode = 'SBER',
-            interval = INTERVAL_H1,
+            interval = INTERVAL_H1
         }
     },
     workingHours = {
