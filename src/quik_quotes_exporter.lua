@@ -1,6 +1,7 @@
 local QuotesClient = require('src/quotes_client')
 local QuikMessage = require('src/quik_message')
 local JsonRpcFSProxyClient = require('src/jsonrpc_fsproxy_client')
+local inspect = require('lib/inspect')
 
 local QuikQuotesExporter = {
     MOSCOW_EXCHANGE_MARKET = 1
@@ -330,7 +331,7 @@ function QuikQuotesExporter:new(params)
                     processInstruments()
                 end
 
-                sleep(minute)
+                sleep(minute/4)
             end
         end)
         if status == false then
@@ -353,7 +354,10 @@ function QuikQuotesExporter:new(params)
     function this:onTrade(trade)
         for i, inst in ipairs(this.instruments) do
             if trade.class_code == inst.classCode and trade.sec_code == inst.secCode then
-                inst.trades[trade.trade_num] = trade
+                if inst.trades ~= nil then
+                    inst.trades[trade.trade_num] = trade
+                    break
+                end
             end
         end
     end
