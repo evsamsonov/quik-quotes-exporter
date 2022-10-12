@@ -331,7 +331,7 @@ function QuikQuotesExporter:new(params)
                     processInstruments()
                 end
 
-                sleep(minute)
+                sleep(minute/4)
             end
         end)
         if status == false then
@@ -354,7 +354,10 @@ function QuikQuotesExporter:new(params)
     function this:onTrade(trade)
         for i, inst in ipairs(this.instruments) do
             if trade.class_code == inst.classCode and trade.sec_code == inst.secCode then
-                inst.trades[trade.trade_num] = trade
+                if inst.trades ~= nil then
+                    inst.trades[trade.trade_num] = trade
+                    break
+                end
             end
         end
     end
