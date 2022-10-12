@@ -56,7 +56,7 @@ return {
             classCode = 'TQBR',                                    
             secCode = 'SBER',     
             
-            -- Интервал. Сейчас доступен только часовой                              
+            -- Интервал       
             interval = INTERVAL_H1,                                
         }
     },
