@@ -20,6 +20,7 @@ function QuotesClient:new(params)
     this.rpcClient = params.rpcClient
 
     local intervals = {
+        [INTERVAL_M5] = 2,
         [INTERVAL_H1] = 6
     }
 
