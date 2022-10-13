@@ -322,7 +322,7 @@ function QuikQuotesExporter:new(params)
         Запуск
     --]]
     function this:run()
-        local minute = 60 * 1000
+        local timeout = 5 * 1000
         local status, err = pcall(function()
             init()
 
@@ -331,7 +331,7 @@ function QuikQuotesExporter:new(params)
                     processInstruments()
                 end
 
-                sleep(minute/4)
+                sleep(timeout)
             end
         end)
         if status == false then
