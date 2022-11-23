@@ -329,6 +329,7 @@ function QuikQuotesExporter:new(params)
             while this.running do
                 if isWorkingHour() then
                     processInstruments()
+                    collectgarbage()
                 end
 
                 sleep(timeout)
