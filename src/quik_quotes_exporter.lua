@@ -8,7 +8,7 @@ local QuikQuotesExporter = {
 }
 function QuikQuotesExporter:new(params)
     local this = {}
-    local VERSION = 'v1.0.3'
+    local VERSION = 'v1.2.0'
     local TICK_BATCH_SIZE = 500
 
     --[[
@@ -184,6 +184,9 @@ function QuikQuotesExporter:new(params)
             inst.lastCandleTime = nil
             inst.lotSize = getParamEx(inst.classCode, inst.secCode, "lotsize").param_value
             inst.trades = {}
+            if inst.symbol == nil then
+                inst.symbol = inst.secCode
+            end
 
             -- Получение времени последней свечи с сервера
             local result = this.quotesClient:getLastCandle(inst.market, inst.symbol, inst.interval)

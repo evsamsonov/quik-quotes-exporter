@@ -7,7 +7,8 @@ return {
     },
     instruments = {
         {
-            market = QuikQuotesExporter.MOSCOW_EXCHANGE_MARKET,
+            market = 1,
+            symbol = 'SBER',
             classCode = 'TQBR',
             secCode = 'SBER',
             interval = INTERVAL_H1
