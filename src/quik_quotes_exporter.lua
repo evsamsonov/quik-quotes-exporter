@@ -186,7 +186,7 @@ function QuikQuotesExporter:new(params)
             inst.trades = {}
 
             -- Получение времени последней свечи с сервера
-            local result = this.quotesClient:getLastCandle(inst.market, inst.secCode, inst.interval)
+            local result = this.quotesClient:getLastCandle(inst.market, inst.symbol, inst.interval)
             if result.candle ~= nil then
                 inst.lastCandleTime = result.candle.time
             end
@@ -251,7 +251,7 @@ function QuikQuotesExporter:new(params)
             if os.time(inst.dataSource:T(j)) >= inst.lastCandleTime then
                 status, result = pcall(function()
                     withRetry(function()
-                        this.quotesClient:addCandle(inst.market, inst.secCode, inst.interval, {
+                        this.quotesClient:addCandle(inst.market, inst.symbol, inst.interval, {
                             time = os.time(inst.dataSource:T(j)),
                             high = inst.dataSource:H(j),
                             low = inst.dataSource:L(j),
