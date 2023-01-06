@@ -46,3 +46,4 @@ luac.out
 *.log
 
 config.lua
+*.bak
